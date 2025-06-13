@@ -54,6 +54,28 @@ def mostrar_graficos(df):
     axs[2].set_title("Rendimiento de Carcasa por Semana")
     st.pyplot(fig)
 
+
+def cuadro_zootecnico_estilo_publicacion(df):
+    if "Insumo" not in df.columns:
+        st.warning("No se encontró una columna 'Insumo' para generar el cuadro zootécnico.")
+        return
+
+    st.subheader("📑 Cuadro resumen zootécnico por tratamiento")
+
+    resumen = df.groupby("Insumo")[[
+        "Consumo", "Ganancia de Peso", "Conversión Alimenticia", "Rendimiento de Carcasa (%)"
+    ]].mean().round(1)
+
+    resumen = resumen.rename(columns={
+        "Consumo": "Consumo de alimento (g)",
+        "Ganancia de Peso": "Ganancia de peso (g)",
+        "Conversión Alimenticia": "Conversión alimenticia",
+        "Rendimiento de Carcasa (%)": "Rendimiento de Carcasa (%)"
+    })
+
+    resumen.index.name = "Tratamientos"
+    st.dataframe(resumen)
+
 # UI
 file = st.file_uploader("Selecciona el archivo .csv", type=["csv"])
 
@@ -81,6 +103,8 @@ if file:
     st.pyplot(fig2)
 
     comparar_insumos(df)
+
+    cuadro_zootecnico_estilo_publicacion(df)
 
     st.subheader("⬇ Exportar resultados")
     csv = df.to_csv(index=False).encode("utf-8")
