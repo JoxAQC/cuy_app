@@ -3,3 +3,5 @@ pandas
 numpy
 matplotlib
 seaborn
+openpyxl  # necesario para leer archivos .xlsx
+xlrd      # necesario para archivos .xls (antiguos)
