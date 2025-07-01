@@ -12,9 +12,20 @@ st.code("TRATAMIENTOS, REPETICIONES, Peso Inicial, Peso Final, Ganancia de peso,
 
 # Carga
 def cargar_datos(file):
-    df = pd.read_csv(file)
-    # Extraer el tratamiento (por ejemplo, T0, TIR, T2, T3)
-    df["Tratamiento"] = df["REPETICIONES"].str.extract(r'([A-Z]+[0-9]*)')
+    if file.name.endswith(".csv"):
+        df = pd.read_csv(file)
+    else:
+        df = pd.read_excel(file)
+
+    df.columns = df.columns.str.strip()  # eliminar espacios en los encabezados
+
+    required_cols = ["REPETICIONES", "Peso Inicial", "Peso Final", "Ganancia de peso", "Conversión alimenticia", "Rendimiento de Carcasa (%)"]
+    missing = [col for col in required_cols if col not in df.columns]
+    if missing:
+        st.error(f"❌ Faltan columnas requeridas en tu archivo: {', '.join(missing)}")
+        st.stop()
+
+    df["Tratamiento"] = df["REPETICIONES"].astype(str).str.extract(r'([A-Z]+[0-9]*)')
     return df
 
 # Resumen por tratamiento
@@ -37,7 +48,7 @@ def mostrar_graficos(df):
     st.pyplot(fig)
 
 # UI principal
-file = st.file_uploader("Selecciona el archivo .csv", type=["csv"])
+file = st.file_uploader("Selecciona el archivo (.csv, .xls, .xlsx)", type=["csv", "xls", "xlsx"])
 
 if file:
     df = cargar_datos(file)
