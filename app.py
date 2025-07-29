@@ -60,10 +60,7 @@ def mostrar_graficos(df):
     plt.tight_layout() # Asegura que los gráficos no se superpongan
     st.pyplot(fig)
 
----
-
-### Interfaz de usuario principal
-
+# Interfaz de usuario principal
 file = st.file_uploader("Selecciona el archivo (.csv, .xls, .xlsx)", type=["csv", "xls", "xlsx"])
 
 if file:
