@@ -19,7 +19,18 @@ def cargar_datos(file):
 
     df.columns = df.columns.str.strip()  # eliminar espacios en los encabezados
 
-    # Actualizamos las columnas requeridas para incluir "Consumo de alimento"
+    # --- CAMBIO AQUÍ: Limpieza de datos ---
+    # 1. Eliminar filas con valores NaN
+    #    'how='any'' elimina la fila si al menos una celda es NaN
+    df = df.dropna(how='any').reset_index(drop=True)
+    
+    # 2. Eliminar columnas que estén completamente vacías (solo tienen None o NaN)
+    #    'how='all'' elimina la columna si todas las celdas son None o NaN
+    df = df.dropna(axis=1, how='all')
+    
+    st.info(f"✅ Se han eliminado filas con datos faltantes y columnas vacías. El DataFrame ahora tiene {df.shape[0]} filas y {df.shape[1]} columnas.")
+    # --- FIN DEL CAMBIO ---
+
     required_cols = [
         "REPETICIONES", "Peso Inicial", "Peso Final", "Ganancia de peso",
         "Consumo de alimento", "Conversión alimenticia", "Rendimiento de Carcasa (%)"
@@ -29,11 +40,8 @@ def cargar_datos(file):
         st.error(f"❌ ¡Ups! Faltan columnas requeridas en tu archivo: {', '.join(missing)}. Por favor, asegúrate de incluirlas todas.")
         st.stop()
 
-    # --- CAMBIO AQUÍ ---
-    # Una expresión regular más simple y robusta para extraer el tratamiento (ej. 'T1' de 'T1R1')
     df["Tratamiento"] = df["REPETICIONES"].astype(str).str.extract(r'([A-Z]+\d+)')
     
-    # Manejamos el caso donde la columna "TRATAMIENTOS" podría existir
     if "TRATAMIENTOS" in df.columns:
         df["Tratamiento"] = df["TRATAMIENTOS"].astype(str)
         
@@ -69,16 +77,25 @@ def mostrar_graficos(df):
 file = st.file_uploader("Selecciona el archivo (.csv, .xls, .xlsx)", type=["csv", "xls", "xlsx"])
 
 if file:
-    df = cargar_datos(file)
-    st.subheader("📋 Datos procesados")
-    st.dataframe(df)
+    try:
+        df = cargar_datos(file)
+        
+        # Se detiene la ejecución si el DataFrame está vacío después de la limpieza
+        if df.empty:
+            st.warning("⚠️ El archivo subido está vacío o no contiene datos válidos después de la limpieza. Asegúrate de que las filas no estén vacías.")
+        else:
+            st.subheader("📋 Datos procesados")
+            st.dataframe(df)
+        
+            st.subheader("📌 Resumen por tratamiento")
+            resumen = resumen_por_tratamiento(df)
+            st.dataframe(resumen)
 
-    st.subheader("📌 Resumen por tratamiento")
-    resumen = resumen_por_tratamiento(df)
-    st.dataframe(resumen)
+            mostrar_graficos(df)
 
-    mostrar_graficos(df)
-
-    st.subheader("⬇ Exportar resultados")
-    csv = resumen.to_csv(index=False).encode("utf-8")
-    st.download_button("Descargar resumen", csv, "resumen_zootecnico.csv", "text/csv")
+            st.subheader("⬇ Exportar resultados")
+            csv = resumen.to_csv(index=False).encode("utf-8")
+            st.download_button("Descargar resumen", csv, "resumen_zootecnico.csv", "text/csv")
+            
+    except Exception as e:
+        st.error(f"❌ Ocurrió un error al procesar el archivo: {e}. Asegúrate de que el formato sea correcto.")
