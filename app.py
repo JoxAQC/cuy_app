@@ -18,18 +18,10 @@ def cargar_datos(file):
         df = pd.read_excel(file)
 
     df.columns = df.columns.str.strip()  # eliminar espacios en los encabezados
-
-    # --- CAMBIO AQUÍ: Limpieza de datos ---
-    # 1. Eliminar filas con valores NaN
-    #    'how='any'' elimina la fila si al menos una celda es NaN
-    df = df.dropna(how='any').reset_index(drop=True)
     
-    # 2. Eliminar columnas que estén completamente vacías (solo tienen None o NaN)
-    #    'how='all'' elimina la columna si todas las celdas son None o NaN
+    # 1. Eliminar columnas que estén completamente vacías (solo tienen None o NaN)
+    #    Esto lo hacemos primero para simplificar el DataFrame inicial.
     df = df.dropna(axis=1, how='all')
-    
-    st.info(f"✅ Se han eliminado filas con datos faltantes y columnas vacías. El DataFrame ahora tiene {df.shape[0]} filas y {df.shape[1]} columnas.")
-    # --- FIN DEL CAMBIO ---
 
     required_cols = [
         "REPETICIONES", "Peso Inicial", "Peso Final", "Ganancia de peso",
@@ -40,12 +32,26 @@ def cargar_datos(file):
         st.error(f"❌ ¡Ups! Faltan columnas requeridas en tu archivo: {', '.join(missing)}. Por favor, asegúrate de incluirlas todas.")
         st.stop()
 
+    # Extraer "Tratamiento" ANTES de la limpieza de filas
     df["Tratamiento"] = df["REPETICIONES"].astype(str).str.extract(r'([A-Z]+\d+)')
     
     if "TRATAMIENTOS" in df.columns:
         df["Tratamiento"] = df["TRATAMIENTOS"].astype(str)
         
-    return df
+    # --- CAMBIO AQUÍ: Limpieza de datos (ahora al final) ---
+    # 2. Ahora sí, eliminar filas con valores NaN.
+    #    Filtramos el DataFrame para que solo contenga los valores no nulos
+    #    en las columnas que realmente nos interesan para el análisis.
+    #    Así evitamos borrar filas enteras por celdas vacías en otras columnas.
+    df_clean = df.dropna(subset=required_cols + ["Tratamiento"]).reset_index(drop=True)
+    
+    initial_rows = df.shape[0]
+    final_rows = df_clean.shape[0]
+    
+    if initial_rows > final_rows:
+        st.warning(f"⚠️ Se han eliminado {initial_rows - final_rows} filas con datos faltantes en las columnas de análisis.")
+    
+    return df_clean
 
 # Resumen por tratamiento
 def resumen_por_tratamiento(df):
@@ -80,9 +86,8 @@ if file:
     try:
         df = cargar_datos(file)
         
-        # Se detiene la ejecución si el DataFrame está vacío después de la limpieza
         if df.empty:
-            st.warning("⚠️ El archivo subido está vacío o no contiene datos válidos después de la limpieza. Asegúrate de que las filas no estén vacías.")
+            st.warning("⚠️ El archivo subido está vacío o no contiene datos válidos después de la limpieza. Asegúrate de que las filas no estén vacías en las columnas de análisis.")
         else:
             st.subheader("📋 Datos procesados")
             st.dataframe(df)
